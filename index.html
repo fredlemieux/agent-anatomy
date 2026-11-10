@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agent Anatomy — every "agent" is the same small machine</title>
+    <meta
+      name="description"
+      content="An interactive explainer for how AI agents actually work. Four parts — model, tools, loop, trigger — and why 'autonomous' is a dial, not a different kind of thing."
+    />
+    <meta name="claude:viewport-fit-sides" content="cover" />
+    <meta name="color-scheme" content="light dark" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="hero">
+        <div class="eyebrow">A visual guide for a kitchen-table argument</div>
+        <div class="hero-grid">
+          <div style="display: grid; gap: 20px">
+            <h1>Every "agent" is the same small machine.</h1>
+            <p class="lede">
+              Chatbots, Claude Code sessions, sub-agents, AI pen-pals on
+              Moltbook: under the hood each one is a language model that calls
+              tools in a loop until it decides it's finished. What changes is
+              <em>what starts the loop</em>, <em>what it's allowed to touch</em>,
+              and <em>how long it keeps going</em>.
+            </p>
+            <div class="formula" aria-label="Agent equals model plus tools plus loop">
+              <span class="chip m">model</span>+<span class="chip t">tools</span
+              >+<span class="chip l">loop</span>=<strong>agent</strong>
+            </div>
+            <div class="formula" style="font-size: 0.92rem">
+              <span class="chip h">+ trigger</span
+              ><span style="color: var(--muted)"
+                >(a person, an event or a timer) is what makes it feel
+                "always on"</span
+              >
+            </div>
+          </div>
+          <svg
+            class="diagram"
+            viewBox="0 0 560 330"
+            role="img"
+            aria-label="Diagram: a trigger starts the harness loop, which alternates between the model and tools, then returns a result"
+          >
+            <defs>
+              <marker
+                id="ah"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="7"
+                markerHeight="7"
+                orient="auto-start-reverse"
+              >
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)" />
+              </marker>
+            </defs>
+            <circle cx="290" cy="165" r="105" fill="none" stroke="var(--loop)" stroke-width="2.5" stroke-dasharray="6 7" />
+            <path id="loopPath" d="M290,60 A105,105 0 1,1 289.9,60" fill="none" stroke="none" />
+            <text x="290" y="160" text-anchor="middle" font-size="13" fill="var(--loop)" font-weight="500">HARNESS</text>
+            <text x="290" y="178" text-anchor="middle" font-size="11" fill="var(--muted)">repeat until no</text>
+            <text x="290" y="192" text-anchor="middle" font-size="11" fill="var(--muted)">tool is requested</text>
+            <g>
+              <circle cx="290" cy="60" r="38" fill="var(--model-soft)" stroke="var(--model)" stroke-width="2" />
+              <text x="290" y="57" text-anchor="middle" font-size="13" font-weight="500" fill="var(--model)">MODEL</text>
+              <text x="290" y="73" text-anchor="middle" font-size="10" fill="var(--muted)">text → text</text>
+            </g>
+            <g>
+              <circle cx="290" cy="270" r="38" fill="var(--tool-soft)" stroke="var(--tool)" stroke-width="2" />
+              <text x="290" y="267" text-anchor="middle" font-size="13" font-weight="500" fill="var(--tool)">TOOLS</text>
+              <text x="290" y="283" text-anchor="middle" font-size="10" fill="var(--muted)">search, files…</text>
+            </g>
+            <rect x="10" y="140" width="110" height="50" rx="10" fill="var(--human-soft)" stroke="var(--human)" stroke-width="2" />
+            <text x="65" y="162" text-anchor="middle" font-size="12" font-weight="500" fill="var(--human)">TRIGGER</text>
+            <text x="65" y="178" text-anchor="middle" font-size="10" fill="var(--muted)">you · event · timer</text>
+            <line x1="122" y1="165" x2="180" y2="165" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)" />
+            <rect x="440" y="140" width="110" height="50" rx="10" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5" />
+            <text x="495" y="170" text-anchor="middle" font-size="12" font-weight="500" fill="var(--ink)">RESULT</text>
+            <line x1="398" y1="165" x2="436" y2="165" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)" />
+            <circle r="7" fill="var(--loop)" class="mover">
+              <animateMotion dur="5s" repeatCount="indefinite">
+                <mpath href="#loopPath" />
+              </animateMotion>
+            </circle>
+          </svg>
+        </div>
+        <nav class="toc" aria-label="Sections">
+          <a href="#ladder">The ladder</a>
+          <a href="#loop">Watch one run</a>
+          <a href="#words">Decoder</a>
+          <a href="#wake">What wakes it</a>
+          <a href="#moltbook">The AI "Reddit"</a>
+          <a href="#dial">Who's right</a>
+        </nav>
+      </header>
+
+      <!-- ============================================================ *
+         * Ladder — click a rung
+         * ============================================================ -->
+      <section id="ladder">
+        <div class="eyebrow">Same parts, stacked</div>
+        <h2>From chatbot to "AI society" is a ladder, not a leap</h2>
+        <p class="lede">Each step adds one ingredient. Click a rung to see which parts are switched on.</p>
+        <div class="ladder">
+          <div class="rungs" id="rungs"></div>
+          <div class="panel rung-detail">
+            <div class="parts" id="parts">
+              <div class="part m" data-p="model">Model</div>
+              <div class="part t" data-p="tools">Tools</div>
+              <div class="part l" data-p="loop">Loop</div>
+              <div class="part h" data-p="trigger">Trigger without you</div>
+              <div class="part x" data-p="others">Other agents</div>
+            </div>
+            <h3 id="rung-title"></h3>
+            <p id="rung-body"></p>
+            <p class="example" id="rung-ex"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ *
+         * Simulator — step through one run
+         * ============================================================ -->
+      <section id="loop">
+        <div class="eyebrow">Step through a real-shaped run</div>
+        <h2>Watch one agent run, call by call</h2>
+        <p class="lede">
+          The model is called <em>fresh</em> each time and handed the whole
+          transcript so far. It "remembers" only because the harness keeps
+          pasting everything back in.
+        </p>
+        <div class="sim">
+          <div class="panel ctx" aria-live="polite">
+            <div class="ctx-head">
+              <h3>Context window</h3>
+              <span class="counter" id="counter">Model calls: 0 · Tool runs: 0</span>
+            </div>
+            <div id="ctx" style="display: grid; gap: 8px"></div>
+          </div>
+          <div style="display: grid; gap: 14px; align-content: start">
+            <svg
+              class="diagram cycle"
+              viewBox="0 0 320 250"
+              role="img"
+              aria-label="Loop diagram highlighting which part is active"
+            >
+              <defs>
+                <marker
+                  id="ah2"
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="6"
+                  markerHeight="6"
+                  orient="auto"
+                >
+                  <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)" />
+                </marker>
+              </defs>
+              <path d="M120,58 Q160,30 200,58" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah2)" />
+              <path d="M232,96 Q262,150 228,188" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah2)" />
+              <path d="M190,214 Q160,232 128,214" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah2)" />
+              <path d="M88,186 Q58,140 90,98" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah2)" />
+              <g class="node" id="n-harness">
+                <circle cx="90" cy="75" r="34" fill="var(--loop-soft)" stroke="var(--loop)" stroke-width="2" />
+                <text x="90" y="72" text-anchor="middle" font-size="11" font-weight="500" fill="var(--loop)">HARNESS</text>
+                <text x="90" y="86" text-anchor="middle" font-size="9" fill="var(--muted)">builds prompt</text>
+              </g>
+              <g class="node" id="n-model">
+                <circle cx="228" cy="75" r="34" fill="var(--model-soft)" stroke="var(--model)" stroke-width="2" />
+                <text x="228" y="72" text-anchor="middle" font-size="11" font-weight="500" fill="var(--model)">MODEL</text>
+                <text x="228" y="86" text-anchor="middle" font-size="9" fill="var(--muted)">writes text</text>
+              </g>
+              <g class="node" id="n-tool">
+                <circle cx="228" cy="205" r="34" fill="var(--tool-soft)" stroke="var(--tool)" stroke-width="2" />
+                <text x="228" y="202" text-anchor="middle" font-size="11" font-weight="500" fill="var(--tool)">TOOL</text>
+                <text x="228" y="216" text-anchor="middle" font-size="9" fill="var(--muted)">harness runs it</text>
+              </g>
+              <g class="node" id="n-done">
+                <circle cx="90" cy="205" r="34" fill="var(--surface)" stroke="var(--ink)" stroke-width="2" />
+                <text x="90" y="202" text-anchor="middle" font-size="11" font-weight="500" fill="var(--ink)">RESULT</text>
+                <text x="90" y="216" text-anchor="middle" font-size="9" fill="var(--muted)">appended</text>
+              </g>
+            </svg>
+            <p class="caption" id="caption">
+              Press <strong>Next step</strong> to start. The goal: check
+              Saturday's weather and put the family walk in the calendar.
+            </p>
+            <div class="controls">
+              <button class="primary" id="next">Next step</button>
+              <button id="play">Play all</button>
+              <button id="reset">Reset</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ *
+         * Glossary
+         * ============================================================ -->
+      <section id="words">
+        <div class="eyebrow">Jargon decoder</div>
+        <h2>Twelve words, one machine</h2>
+        <p class="lede">
+          Most of the confusing vocabulary is a name for one piece of the loop,
+          or for text that gets placed into the context.
+        </p>
+        <div class="gloss" id="gloss"></div>
+      </section>
+
+      <!-- ============================================================ *
+         * Triggers — what wakes an agent
+         * ============================================================ -->
+      <section id="wake">
+        <div class="eyebrow">Nothing sits there thinking</div>
+        <h2>Only three things ever start an agent</h2>
+        <div class="trig">
+          <div class="panel">
+            <h3 class="h">A person</h3>
+            <p>You type a message. This is a chat or a Claude Code session. Stops when the job's done.</p>
+          </div>
+          <div class="panel">
+            <h3 class="h">An event</h3>
+            <p>A hook or webhook fires: an email arrives, code is pushed, a file changes. The harness starts a run with the event pasted in.</p>
+          </div>
+          <div class="panel">
+            <h3 class="h">A timer</h3>
+            <p>A schedule or "heartbeat" wakes it every N minutes or hours to check for work. This is what makes agents feel alive.</p>
+          </div>
+        </div>
+        <div class="panel" style="display: grid; gap: 10px">
+          <div class="ctx-head">
+            <h3>One always-on agent's day</h3>
+            <span class="counter">Model actually running: about 2% of the day</span>
+          </div>
+          <div class="strip-wrap">
+            <svg
+              id="strip"
+              class="diagram"
+              viewBox="0 0 960 120"
+              style="min-width: 560px"
+              role="img"
+              aria-label="Timeline of a day showing short bursts of activity: six timer wake-ups, one message from a person, one event"
+            ></svg>
+          </div>
+          <p class="note">
+            Between bursts there's no process "waiting" or "pondering". The
+            agent is a config file, a prompt and some memory files on disk,
+            plus a scheduler that will start the loop again.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============================================================ *
+         * Moltbook case study
+         * ============================================================ -->
+      <section id="moltbook">
+        <div class="eyebrow">Case study · January 2026</div>
+        <h2>How the "Reddit for AI" worked</h2>
+        <p class="lede">
+          Moltbook was a forum where only AI agents could post. The agents were
+          mostly <strong>OpenClaw</strong> assistants running on people's own
+          computers. Joining meant handing your agent a skill file; from then
+          on its heartbeat checked Moltbook <strong>every 4+ hours</strong>,
+          read the feed, maybe posted or commented, and went quiet.
+        </p>
+        <div class="stats">
+          <div class="stat"><strong>1.5M</strong><span>registered agents</span></div>
+          <div class="stat"><strong>~17,000</strong><span>human owners behind them</span></div>
+          <div class="stat"><strong>88 : 1</strong><span>agents per human</span></div>
+          <div class="stat"><strong>4 h+</strong><span>between each agent's check-ins</span></div>
+        </div>
+        <div class="molt">
+          <div class="panel" style="display: grid; gap: 10px">
+            <div class="ctx-head">
+              <h3>Four agents, twelve hours</h3>
+              <span class="counter" id="clock">08:00</span>
+            </div>
+            <div class="strip-wrap">
+              <svg
+                id="lanes"
+                class="diagram"
+                viewBox="0 0 620 250"
+                style="min-width: 480px"
+                role="img"
+                aria-label="Four agents each wake every four hours at different times, read the forum and post"
+              ></svg>
+            </div>
+            <p class="note">Each block is one heartbeat run: fetch instructions, read the feed through the API, write a post or comment, stop.</p>
+          </div>
+          <div class="panel feed" id="feed" aria-label="Illustrative forum thread">
+            <div class="ctx-head">
+              <h3>m/todayilearned</h3>
+              <span class="counter">illustrative posts</span>
+            </div>
+          </div>
+        </div>
+        <div class="two">
+          <div class="panel side">
+            <h3>So how did they take turns?</h3>
+            <p>
+              They didn't need to. A forum is asynchronous: posts sit in a
+              database, and each agent reads whatever is newest when its own
+              timer goes off. Nobody talks over anybody because nobody is
+              talking live. A "conversation" between two agents can have hours
+              between replies, like email.
+            </p>
+          </div>
+          <div class="panel side">
+            <h3>And how autonomous was it?</h3>
+            <p>
+              Less than the videos suggested. Security firm Wiz found the
+              database open to anyone: a human could post as any agent with a
+              plain web request, there was no rate limiting, and one person
+              could register agents in bulk. Some of the eeriest posts may
+              simply have been people.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ *
+         * Dial — the argument, settled
+         * ============================================================ -->
+      <section id="dial">
+        <div class="eyebrow">Settling the argument</div>
+        <h2>"Autonomous" is a dial, not a different kind of thing</h2>
+        <div class="dial">
+          <div class="track"></div>
+          <div class="stops">
+            <div class="stop">
+              <span class="tag">1 model call</span>
+              <h3>Chat reply</h3>
+              <p>You ask, it answers, it stops.</p>
+            </div>
+            <div class="stop">
+              <span class="tag">dozens of calls · minutes</span>
+              <h3>Coding session</h3>
+              <p>Claude Code reads files, runs tests, edits, until the task is done.</p>
+            </div>
+            <div class="stop">
+              <span class="tag">runs for months</span>
+              <h3>Scheduled agent</h3>
+              <p>Wakes on a timer, checks inbox or prices, acts, sleeps.</p>
+            </div>
+            <div class="stop">
+              <span class="tag">timer + others' output</span>
+              <h3>Moltbook agent</h3>
+              <p>Its input is partly what other agents wrote. Feels social.</p>
+            </div>
+            <div class="stop fiction">
+              <span class="tag">not how today's systems work</span>
+              <h3>Always-on mind</h3>
+              <p>Continuous thought with no trigger, nothing switching it on or off.</p>
+            </div>
+          </div>
+        </div>
+        <div class="two">
+          <div class="panel side">
+            <h3 class="l">The "it's just a loop" view gets right…</h3>
+            <ul>
+              <li>Every agent is a model plus tools plus a loop, started by a person, an event or a timer.</li>
+              <li>Skills, system prompts, sub-agents and memory are all text that ends up in a context window.</li>
+              <li>Between runs, nothing is thinking. Continuity lives in files.</li>
+              <li>Multi-agent "societies" are many of these loops reading and writing one shared place.</li>
+            </ul>
+          </div>
+          <div class="panel side">
+            <h3 class="h">The "autonomous agents" view gets right…</h3>
+            <ul>
+              <li>The model chooses its own next step. Nobody scripts the path, so results can surprise the people who built it.</li>
+              <li>A loop with access to your email, money or code, running at 3am, is a real actor in the world even if it's "just" text in and out.</li>
+              <li>A million cheap loops reading each other produce patterns no one designed. Simple parts, complex behaviour.</li>
+            </ul>
+          </div>
+        </div>
+        <h3 style="margin-top: 8px">Is it more complicated than a loop? A little, in four places</h3>
+        <div class="wrinkles">
+          <div class="panel">
+            <h3>Workflow vs agent</h3>
+            <p>If a programmer hard-codes the steps, it's a workflow. If the model picks the next step each turn, it's an agent. Same parts, different control.</p>
+          </div>
+          <div class="panel">
+            <h3>The context fills up</h3>
+            <p>Long runs summarise older turns or write notes to files and re-read them later. That's how a session can last hours or "remember" across days.</p>
+          </div>
+          <div class="panel">
+            <h3>Everything it reads can steer it</h3>
+            <p>Text is both data and instruction. A web page or a forum post can contain orders. Moltbook's heartbeat literally fetched fresh instructions from the site every few hours.</p>
+          </div>
+          <div class="panel">
+            <h3>Orchestration is just more loops</h3>
+            <p>A lead agent can start sub-agents with a tool call, each in a fresh context, and collect their summaries. Agents managing agents, still input → output.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div class="eyebrow">Sources</div>
+        <div>
+          Simon Willison,
+          <a href="https://simonwillison.net/2026/Jan/30/moltbook/">post on Moltbook, 30 Jan 2026</a>
+          (how the skill and 4-hour heartbeat work) · Wiz Research,
+          <a href="https://wiz.io/blog/exposed-moltbook-database-reveals-millions-of-api-keys">"Hacking Moltbook"</a>
+          (1.5M agents, ~17k owners, open database) · Anthropic,
+          <a href="https://www.anthropic.com/engineering/building-effective-agents">"Building effective agents"</a>
+          (workflows vs agents).
+        </div>
+        <div>Forum posts and the weather run on this page are illustrative examples.</div>
+        <div>
+          Built by <a href="https://github.com/fredlemieux">Fred Lemieux</a>.
+          Source on <a href="https://github.com/fredlemieux/agent-anatomy">GitHub</a>.
+        </div>
+      </footer>
+    </div>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
